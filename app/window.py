@@ -163,6 +163,11 @@ class MainWindow(QMainWindow):
             self._flash_status(f"✔ {action_name} (no output)")
             return
 
+        # Read-only / metric actions: show in status bar, leave editor alone.
+        if getattr(action, "info", False):
+            self._flash_status(f"ℹ {action_name}: {result}", ms=8000)
+            return
+
         # Replace editor contents while preserving the undo stack so Ctrl+Z
         # restores the pre-action text.
         cursor = self.editor.textCursor()

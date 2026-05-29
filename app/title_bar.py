@@ -50,6 +50,8 @@ class CustomTitleBar(QWidget):
         # Title label
         self.title_label = QLabel("uboop")
         self.title_label.setMouseTracking(True)
+        # Let drag/double-click events fall through to the title bar.
+        self.title_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(self.title_label)
 
         # Spacer
@@ -73,10 +75,21 @@ class CustomTitleBar(QWidget):
         layout.addWidget(self.close_button)
 
     def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.dragging = True
-            self.drag_position = event.globalPosition().toPoint() - self.parent_window.pos()
+        if event.button() != Qt.MouseButton.LeftButton:
+            return super().mousePressEvent(event)
+
+        # Prefer the compositor-driven system move — this is the only
+        # reliable way to drag a frameless window on Wayland and on most
+        # X11 window managers. Falls back to manual move() if it fails.
+        win = self.window().windowHandle() if self.window() else None
+        if win is not None and win.startSystemMove():
+            self.dragging = False
             event.accept()
+            return
+
+        self.dragging = True
+        self.drag_position = event.globalPosition().toPoint() - self.parent_window.pos()
+        event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent):
         if self.dragging and event.buttons() & Qt.MouseButton.LeftButton:
